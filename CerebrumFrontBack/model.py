@@ -7,18 +7,9 @@ from torch.utils.data import DataLoader
 
 import os
 import cv2
-import json
 import numpy as np
-import joblib
 from datetime import timedelta
 
-import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-
-from tqdm import tqdm
-from sklearn.model_selection import train_test_split
-from IPython.display import clear_output
-from sklearn.metrics import confusion_matrix
 
 TARGET_RESOLUTION = (50,50)
 class CustomDataset(Dataset):
