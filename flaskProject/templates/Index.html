@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <title>Загрузка видео</title>
+
+    <style>
+        .btn-gradient {
+            background-image: linear-gradient(to right, #6f42c1, #8a2be2);
+            color: white;
+        }
+        .btn-gradient:hover {
+            background-image: linear-gradient(to right, #5a34a3, #7b68ee);
+        }
+        .navbar-brand {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        .logo-cerebrum {
+            max-width:50%;
+            max-height:40%;
+            height: auto;
+            width:auto;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">
+            <img class="logo-cerebrum" src="static/Cerebrum.png" alt="Логотип">
+        </a>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <form id="fileUploadForm" action="/upload" method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="videoUpload" class="form-label">Выберите видео для загрузки</label>
+            <input class="form-control" type="file" name="file" id="videoUpload" multiple>
+        </div>
+        <button id="uploadButton" type="button" class="btn btn-gradient">Отправить</button>
+    </form>
+</div>
+
+
+<script>
+  document.getElementById('uploadButton').addEventListener('click', function() {
+    var form = document.getElementById('fileUploadForm');
+    var formData = new FormData(form);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', form.action, true);
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        alert('Файлы успешно загружен');
+      } else {
+        alert('Ошибка загрузки файлов: ' + xhr.status);
+      }
+    };
+    xhr.send(formData);
+  });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

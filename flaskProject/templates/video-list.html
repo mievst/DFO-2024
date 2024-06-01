@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <!-- Обязательные метатеги и ссылки на Bootstrap CSS -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <title>Нарушения</title>
+
+  <!-- Стили -->
+  <style>
+   .excel-btn {
+       margin-top: 10px;
+       min-width: 10%;
+   }
+
+   .btn-gradient {
+       background-image: linear-gradient(to right, #6f42c1, #8a2be2);
+       color: white;
+       font-size: x-large;
+   }
+   .btn-gradient:hover {
+       background-image: linear-gradient(to right, #5a34a3, #7b68ee);
+   }
+
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgb(0,0,0);
+    background-color: rgba(0,0,0,0.4);
+  }
+
+  .modal-content {
+      margin: 2% auto;
+      padding: 20px;
+      width: 70%;
+  }
+
+    .btn-gradient {
+      background-image: linear-gradient(to right, #6f42c1, #8a2be2);
+      color: white;
+    }
+    .btn-gradient:hover {
+      background-image: linear-gradient(to right, #5a34a3, #7b68ee);
+    }
+    .navbar-brand {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+    .logo-cerebrum {
+      max-width:50%;
+      max-height:40%;
+      height: auto;
+      width:auto;
+    }
+    .card {
+        margin-top: 10px;
+    }
+    .card-header-gradient {
+            background-image: linear-gradient(to right, #6f42c1, #8a2be2);
+            color: white;
+        }
+  </style>
+</head>
+<body>
+
+<!-- Навигационная панель с логотипом -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">
+            <img class="logo-cerebrum" src="/static/Cerebrum.png" alt="Логотип">
+        </a>
+    </div>
+</nav>
+
+<!-- Контент страницы -->
+
+<div class="container-fluid">
+<form id="exportToXlsxForm" action="/export/xlsx" method="post">
+    <button id="exportToXlsxBtn" type="submit" class="btn btn-success excel-btn">
+        <i class="bi bi-file-earmark-excel"></i><b>Экспорт в XLSX</b>
+    </button>
+</form>
+
+    {% for violation_type in violations.keys() %}
+<div class="card">
+  <h5 class="card-header card-header-gradient">{{ violation_type }}</h5>
+  <div class="card-body">
+    <ul class="list-group">
+              {% for video in violations[violation_type] %}
+                <li class="list-group-item">
+              <div class="row">
+                <div class="col">
+                  <b>Всего нарушений по типу в видео:  {{ violations[violation_type][video].__len__() }}</b>
+                  <br>
+                  <b>Имя файла: {{ video }}</b>
+                  <br>
+                  <b>Таймкоды: </b>
+                    {% for violation in violations[violation_type][video] %}
+                        <a href="#" onclick="event.preventDefault();">{{ violation.start }} - {{ violation.end }}</a>
+                    {% endfor %}
+                  <b></b>
+                </div>
+              </div>
+
+            </li>
+              {% endfor %}
+          </ul>
+  </div>
+</div>
+    {% endfor %}
+</div>
+
+<!-- Скрипт для вывода видео с сервера -->
+<script></script>
+<!-- Bootstrap JavaScript Bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Блок модального окна -->
+<div id="myModal" class="modal">
+  <div class="modal-content">
+    <button id="closeModalButton" type="button" class="btn btn-gradient">Закрыть</button>
+    <video id="myVideo" width="100%" controls>
+      <source src="path_to_your_video.mp4" type="video/mp4">
+    </video>
+  </div>
+</div>
+
+<script>
+   function convertToSeconds(time) {
+      const [minutes, seconds] = time.split(':').map(Number);
+      return minutes * 60 + seconds;
+  }
+
+ var modal = document.getElementById("myModal");
+ var closeModalButton = document.querySelector('#closeModalButton');
+
+ closeModalButton.onclick = function() {
+     modal.style.display = "none";
+     video.pause();
+ }
+
+ document.addEventListener('DOMContentLoaded', (event) => {
+  // Получаем все элементы с классом 'card'
+  const cards = document.querySelectorAll('.card');
+
+  // Добавляем слушатель событий на каждую карточку
+  cards.forEach(card => {
+    card.addEventListener('click', (event) => {
+      // Проверяем, что клик был сделан на элементе <a>
+      if (event.target.tagName === 'A') {
+        // Получаем текстовое содержимое элемента <a>
+        const text = event.target.textContent;
+        // Получаем значение video, предполагая, что оно находится в ближайшем элементе с классом 'col'
+        const video = event.target.closest('.col').querySelector('b:nth-child(3)').textContent;
+
+        var txtArr = text.replace(/\s+/g, '').split('-');
+        var start = txtArr[0];
+        var end = txtArr[1];
+
+        const startSeconds = convertToSeconds(start);
+        const endSeconds = convertToSeconds(end);
+
+        // Теперь вы можете использовать переменные text и video как вам нужно
+        console.log(`Текст ссылки: ${startSeconds}`);
+        console.log(`Имя файла видео: ${endSeconds}`);
+
+        const videoSource = document.querySelector('#myVideo source');
+
+        const videoNew = video.replace('Имя файла:', '').replace(/\s+/g, '')
+        // Устанавливаем новый путь к видео
+        videoSource.src = '/videos/' + videoNew;
+        const videoPlayer = document.querySelector('#myVideo');
+        videoPlayer.load();
+
+       modal.style.display = "block";
+       var video_ = document.getElementById("myVideo");
+       video_.currentTime = startSeconds; // Установите время начала в секундах
+       video_.play();
+
+       window.onclick = function(event) {
+        if (event.target == modal) {
+        modal.style.display = "none";
+        video_.pause();
+        }
+}
+      }
+    });
+  });
+});
+</script>
+
+
+</body>
+</html>
