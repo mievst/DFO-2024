@@ -2,6 +2,8 @@ from flask import Flask, request, send_from_directory, render_template, send_fil
 import os
 from zipfile import ZipFile
 import io
+import json
+from model import ModelManager
 
 app = Flask(__name__)
 VIDEOS_FOLDER = 'videos'
@@ -29,7 +31,11 @@ def upload_file():
                 path = os.path.join(app.config['VIDEOS_FOLDER'], filename)
                 correct_path = path.replace(os.path.sep, '/')
                 file.save(correct_path)
-
+        manager = ModelManager()
+        predict = manager.predict_in_folder(app.config['VIDEOS_FOLDER'])
+        with open('timecodes.json', 'w') as json_file:
+            json.dump(predict, json_file)
+        print('File uploaded successfully')
         return 'File uploaded successfully'
     else:
         return 'No file part'
@@ -47,7 +53,6 @@ def upload_timecodes():
         return 'JSON данные получены', 200
     else:
         return 'Нет JSON данных в запросе', 400
-    pass
 
 @app.route('/show/<filename>', methods=['GET'])
 def show_file(filename):

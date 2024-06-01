@@ -20,7 +20,7 @@ from sklearn.model_selection import train_test_split
 from IPython.display import clear_output
 from sklearn.metrics import confusion_matrix
 
-
+TARGET_RESOLUTION = (7,7)
 class CustomDataset(Dataset):
     def __init__(self, x, y):
         self.y = y.copy()
@@ -39,9 +39,9 @@ class CNN(nn.Module):
     def __init__(self, num_classes) -> None:
         super(CNN, self).__init__()
         self.cnn = models.resnet152(weights=models.ResNet152_Weights.DEFAULT)
-        num_ftrs = self.cnn.fc.in_features
-        #for param in self.cnn.parameters():
-            #param.requires_grad = False
+        num_ftrs = 2048
+        for param in self.cnn.parameters():
+            param.requires_grad = False
         self.cnn = nn.Sequential(*list(self.cnn.children())[:-2])
         self.relu = nn.ReLU()
         self.fc1 = nn.Linear(num_ftrs, num_ftrs//2)
@@ -100,11 +100,17 @@ def get_timestamps(predictions, threshold=0.5, frame_rate=30, window_size=1):
     return timestamps
 
 
+def seconds_to_time(total_seconds):
+    minutes = total_seconds // 60
+    seconds = total_seconds % 60
+    return '{:02d}:{:02d}'.format(minutes, seconds)
+
 class ModelManager():
     def __init__(self):
         self.classificators = {}
         model = CNN(num_classes=1)  # Одна выходная нейрона для вероятности нарушения
-        model.load_state_dict(torch.load('checkpoint.pt'))
+        print(os.getcwd())
+        model.load_state_dict(torch.load('./checkpoints/checkpoint.pt'))
         self.classificators["подлезание"] = model
 
     def predict(self, video):
@@ -118,7 +124,42 @@ class ModelManager():
             _type_: _description_
         """
         output = {}
+        video = torch.tensor(video).cpu().float()
         for key in self.classificators.keys():
-            pred = self.classificators[key](video)
+            pred = self.classificators[key].cpu()(video)
             output[key] = get_timestamps(pred)
         return output
+
+    def predict_in_folder(self, folder_path):
+        video_names = os.listdir(folder_path)
+        outputs = []
+        video_names = [x for x in video_names if str.lower(x).endswith("mp4")]
+        for video_name in video_names:
+            video_path = os.path.join(folder_path, video_name)
+            cap = cv2.VideoCapture(video_path)
+            frames = []
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                frame = cv2.resize(frame, TARGET_RESOLUTION)
+                frames.append(frame / 255)
+                frames.append(frame)
+
+            cap.release()
+
+            # Convert the frames list into a numpy array
+            video_array = np.array(frames)
+            pred = self.predict(video_array)
+            for key, val in pred.items():
+                if len(val)>0:
+                    for item in val:
+                        output= {
+                            "name":video_name,
+                            "start": seconds_to_time(item[0]),
+                            "end": seconds_to_time(item[1]),
+                            "type": key
+                        }
+                        outputs.append(output)
+        return outputs
