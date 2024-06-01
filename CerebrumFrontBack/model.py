@@ -20,7 +20,7 @@ from sklearn.model_selection import train_test_split
 from IPython.display import clear_output
 from sklearn.metrics import confusion_matrix
 
-TARGET_RESOLUTION = (7,7)
+TARGET_RESOLUTION = (50,50)
 class CustomDataset(Dataset):
     def __init__(self, x, y):
         self.y = y.copy()
@@ -64,6 +64,34 @@ class CNN(nn.Module):
         return x
 
 
+class CNNLSTM(nn.Module):
+    def __init__(self):
+        super(CNNLSTM, self).__init__()
+        self.flatten = nn.Flatten()
+        self.cnn = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+        self.lstm = nn.LSTM(64 * 144, 128, batch_first=True)
+        self.fc = nn.Linear(128, 10)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        batch_size, seq_length, w, h, c = x.size()
+        c_in = x.view(batch_size * seq_length, c, h, w)
+        #c_in = self.flatten(c_in)
+        c_out = self.cnn(c_in)
+        c_out = c_out.view(batch_size, seq_length, -1)
+        lstm_out, _ = self.lstm(c_out)
+        lstm_out = lstm_out[:, -1, :]
+        fc_out = self.fc(lstm_out)
+        out = self.sigmoid(fc_out)
+        return out
+
 def get_timestamps(predictions, threshold=0.5, frame_rate=30, window_size=1):
     """
     Получение таймкодов нарушений на основе предсказаний модели.
@@ -101,17 +129,16 @@ def get_timestamps(predictions, threshold=0.5, frame_rate=30, window_size=1):
 
 
 def seconds_to_time(total_seconds):
-    minutes = total_seconds // 60
-    seconds = total_seconds % 60
+    minutes = int(total_seconds // 60)
+    seconds = int(total_seconds % 60)
     return '{:02d}:{:02d}'.format(minutes, seconds)
 
 class ModelManager():
     def __init__(self):
         self.classificators = {}
-        model = CNN(num_classes=1)  # Одна выходная нейрона для вероятности нарушения
-        print(os.getcwd())
-        model.load_state_dict(torch.load('./checkpoints/checkpoint.pt'))
-        self.classificators["подлезание"] = model
+        model = CNNLSTM()  # Одна выходная нейрона для вероятности нарушения
+        model.load_state_dict(torch.load('./checkpoints/cnnlstm.pt'))
+        self.classificators["Подлезание под вагоны стоящего состава"] = model
 
     def predict(self, video):
         """
@@ -124,11 +151,36 @@ class ModelManager():
             _type_: _description_
         """
         output = {}
-        video = torch.tensor(video).cpu().float()
+        #video = torch.tensor(video).cpu().float()
         for key in self.classificators.keys():
-            pred = self.classificators[key].cpu()(video)
+            pred = []
+            inp = self.__cnn_lstm_data_preparation(video)
+            for i in inp:
+                out = self.classificators[key](i)
+                out = out.cpu().detach()[0]
+                for j in out:
+                    pred.append(j)
+            pred = torch.tensor(pred)
             output[key] = get_timestamps(pred)
         return output
+
+    def __cnn_data_preparation(self, data):
+        return torch.tensor(data).cpu().float()
+
+    def __cnn_lstm_data_preparation(self, data):
+        l = len(data) // 10
+        vid = []
+        for i in range(l+1):
+            batch = []
+            for j in range(10):
+                if i*10+j < len(data):
+                    batch.append(data[i*10+j])
+                else:
+                    batch.append(np.zeros_like(data[0]))
+            vid.append([batch])
+        inp = torch.tensor(vid).float()
+        inp = inp.cpu()
+        return inp
 
     def predict_in_folder(self, folder_path):
         video_names = os.listdir(folder_path)
@@ -153,10 +205,10 @@ class ModelManager():
             video_array = np.array(frames)
             pred = self.predict(video_array)
             for key, val in pred.items():
-                if len(val)>0:
+                if len(val) > 0:
                     for item in val:
                         output= {
-                            "name":video_name,
+                            "name": video_name,
                             "start": seconds_to_time(item[0]),
                             "end": seconds_to_time(item[1]),
                             "type": key
