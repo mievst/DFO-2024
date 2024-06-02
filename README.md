@@ -15,6 +15,7 @@ git clone https://github.com/mievst/DFO-2024.git
 2. Установите зависимости:
 
 ```bash
+cd ./DFO-2024
 pip install -r requirements.txt
 ```
 
