@@ -128,7 +128,7 @@ class ModelManager():
     def __init__(self):
         self.classificators = {}
         model = CNNLSTM()  # Одна выходная нейрона для вероятности нарушения
-        model.load_state_dict(torch.load('./checkpoints/cnnlstm.pt'))
+        model.load_state_dict(torch.load('./checkpoints/cnnlstm.pt', map_location=torch.device("cpu")))
         self.classificators["Подлезание под вагоны стоящего состава"] = model
 
     def predict(self, video):
