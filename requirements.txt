@@ -1,7 +1,7 @@
 Flask
 opencv-python==4.9.0.80
 scipy==1.10.1
-torch==2.3.0
+torch==2.7.0
 torchaudio==2.3.0
 torchvision==0.18.0
 numpy
